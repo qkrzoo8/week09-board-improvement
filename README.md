@@ -24,13 +24,13 @@ node server.js
 ### 1. `server.js` (Express 백엔드 API)
 - **대량 데이터셋**: 1,000건의 인메모리 게시글 데이터 자동 시드.
 - **방어적 파라미터 파싱**: `parseInt(..., 10)` 기수 명시, 음수 및 0 페이지 차단, `Math.min(..., 100)` 대량 조회 공격 방어.
-- **ORDER BY 화이트리스트 보안**: `SORT_WHITELIST` 객체 매핑으로 SQL Injection 원천 봉쇄 및 `id DESC` 동점자 방지 2차 정렬 결합.
+- **ORDER BY 화이트리스트 보안**: Object.hasOwn()을 활용해 허용된 정렬 키만 적용하고, 잘못된 정렬 키와 상속 속성은 최신순으로 처리한다. 조회수 동점 시에는 id DESC 보조 정렬을 적용한다.
 - **2대 페이징 API 제공**:
   - `GET /api/posts`: 오프셋 기반 페이징 (`LIMIT` / `OFFSET`, 표준 `meta` Envelope 응답)
   - `GET /api/posts/cursor`: 고성능 커서 기반 페이징 (`WHERE id < ? ORDER BY id DESC LIMIT 10`, `limit + 1` 패턴으로 `COUNT(*)` 제거)
 
 ### 2. `index.html` (SPA 프론트엔드 & 실시간 DevTools 검사기)
-- **탭 모드 전환**: [오프셋 번호 페이징] ↔ [커서 기반 무한 스크롤] 즉시 비교.
+- **탭 모드 전환**: [오프셋 번호 페이징] ↔ [커서 기반 더 보기 방식] 즉시 비교.
 - **실시간 디바운스 (300ms)**: 연속 타이핑 시 불필요한 API 요청 폭격 방지.
 - **AbortController 비동기 방어**: 새 검색어 입력 시 이전 진행 중인 fetch 요청을 즉각 취소하여 Race Condition 버그 예방.
 - **브라우저 히스토리 동기화**: `URLSearchParams`와 `history.pushState` 및 `window.onpopstate` 이벤트로 뒤로 가기 / 새로고침 상태 복원 지원.
@@ -40,7 +40,7 @@ node server.js
 ## 🎯 3학년 전공 실습 과제 체크리스트
 
 1. **정렬 보안**: `server.js`에서 허용되지 않은 정렬 키(예: `sort=views; DROP TABLE--`) 입력 시 안전하게 기본값(`latest`)으로 격리되는지 검증하세요.
-2. **커서 페이징**: 100페이지 이상 스킵 시 오프셋 방식의 한계와 커서 방식의 속도 차이를 DevTools의 `X-Response-Time` 헤더로 측정해 보세요.
+2. **커서 페이징**: 커서 페이징: 오프셋과 커서 방식의 데이터 조회 원리 및 동작 차이를 비교하고, X-Response-Time 헤더를 통해 응답 시간을 관찰한다. 본 실습은 인메모리 배열을 사용하므로 실제 DB 인덱스 성능 비교는 수행하지 않는다.
 3. **Race Condition 실험**: `index.html`에서 빠른 타이핑 시 콘솔에 `[AbortController] 이전 비동기 요청이 정상 취소되었습니다` 로그가 정상 출력되는지 확인하세요.
 
 
@@ -57,6 +57,7 @@ node server.js
 | index.html | 커서 모드에서 정렬 선택 비활성화 |
 | index.html | 요청 번호 검증을 통한 오래된 응답 반영 방지 |
 | index.html | 검색 입력 시 이전 비동기 요청 즉시 취소 |
+| index.html | 정렬 기준 설명과 커서 SQL 미리보기의 검색 조건 개선 |
 
 기존 코드에 구현된 검색, 오프셋 페이지네이션, 300ms 디바운스, URL 상태 복원 기능은 유지하면서 필요한 부분을 개선하였다.
 

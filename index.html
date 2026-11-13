@@ -258,9 +258,9 @@
       <div class="controls">
         <input type="text" id="searchInput" class="input-text" placeholder="검색어 입력 (300ms 디바운스 적용)...">
         <select id="sortSelect" class="select-box">
-          <option value="latest">최신순 (created_at DESC, id DESC)</option>
+          <option value="latest">최신순 (id DESC)</option>
           <option value="views">조회수순 (views DESC, id DESC)</option>
-          <option value="oldest">오래된순 (created_at ASC, id ASC)</option>
+          <option value="oldest">오래된순 (id ASC)</option>
         </select>
         <button class="btn" onclick="applySearch()">조회</button>
       </div>
@@ -507,15 +507,31 @@
       const sqlBox = document.getElementById('inspectSql');
       if (mode === 'offset') {
         const offset = (state.page - 1) * state.limit;
-        let sortClause = 'created_at DESC, id DESC';
+        let sortClause = 'id DESC';
         if (state.sort === 'views') sortClause = 'views DESC, id DESC';
-        else if (state.sort === 'oldest') sortClause = 'created_at ASC, id ASC';
+        else if (state.sort === 'oldest') sortClause = 'id ASC';
 
         let whereClause = state.search ? `WHERE (title LIKE '%${state.search}%' OR content LIKE '%${state.search}%') ` : '';
         sqlBox.textContent = `SELECT id, title, author, views, created_at FROM posts ${whereClause}ORDER BY ${sortClause} LIMIT ${state.limit} OFFSET ${offset};`;
       } else {
-        let whereClause = state.cursor ? `WHERE id < ${state.cursor} ` : '';
-        sqlBox.textContent = `SELECT id, title, author, views, created_at FROM posts ${whereClause}ORDER BY id DESC LIMIT ${state.limit + 1};`;
+        const conditions = [];
+
+        // 제목·본문 검색 조건
+        if (state.search) {
+          conditions.push("(title LIKE ? OR content LIKE ?)");
+        }
+
+        // 커서 조건
+        if (state.cursor) {
+          conditions.push("id < ?");
+        }
+
+        const whereClause = conditions.length
+          ? `WHERE ${conditions.join(' AND ')} `
+          : '';
+
+        sqlBox.textContent =
+          `SELECT id, title, author, views, created_at FROM posts ${whereClause}ORDER BY id DESC LIMIT ${state.limit + 1};`;
       }
     }
 
